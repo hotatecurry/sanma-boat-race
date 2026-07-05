@@ -47,13 +47,13 @@ HTML = r'''<!DOCTYPE html>
 <meta property="og:title" content="ボートレース — さんま VS やすし">
 <meta property="og:description" content="A/B交互連打で やすしに勝て！ ファミコン風ボートレース・ミニゲーム。タコ焼きでスピードアップ、力士に当たると…！？">
 <meta property="og:url" content="__SITE_URL__">
-<meta property="og:image" content="__SITE_URL__og.png">
+<meta property="og:image" content="__SITE_URL__og.png?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ボートレース — さんま VS やすし">
 <meta name="twitter:description" content="A/B交互連打で やすしに勝て！ ファミコン風ボートレース・ミニゲーム。">
-<meta name="twitter:image" content="__SITE_URL__og.png">
+<meta name="twitter:image" content="__SITE_URL__og.png?v=2">
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; background:#000; }
