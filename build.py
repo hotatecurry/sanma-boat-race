@@ -95,28 +95,67 @@ const tokeiImg=mkImg('__TOKEI__');       // 時計：取ると敵が止まる
 const takoyakiImg=mkImg('__TAKO__');     // たこ焼き：スピードアップ
 const OBS_IMGS=[hmImg,ramenImg,getaImg];
 
-// ==== BGM（レース中だけループ再生・base64埋め込み）====
-const bgm=new Audio('__BGM__');
-bgm.loop=true; bgm.volume=0.5;
-let bgmWanted=false;                                  // レース中で鳴らしたい状態か
-function bgmPlay(){ bgmWanted=true; const p=bgm.play(); if(p&&p.catch) p.catch(()=>{}); }
-function bgmStop(){ bgmWanted=false; bgm.pause(); try{ bgm.currentTime=0; }catch(e){} }
-// 初回はブラウザの自動再生制限で鳴らない場合があるので、最初の操作で解除して鳴らす
-function bgmUnlock(){ if(bgmWanted){ const p=bgm.play(); if(p&&p.catch) p.catch(()=>{}); } }
-window.addEventListener('pointerdown', bgmUnlock);
-window.addEventListener('keydown', bgmUnlock);
+// ==== オーディオ（Web Audio API：iOSのループ無音＆SE不発対策）====
+const BGM_URI='__BGM__', SE1_URI='__SE1__', SE2_URI='__SE2__';
+let actx=null, bgmGain=null, bgmBuf=null, se1Buf=null, se2Buf=null, bgmSrc=null;
+let bgmWanted=false, se2Done=false, bgmLoopStart=0, bgmLoopEnd=0;
+function initAudio(){
+  if(actx) return;
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+  try{ actx=new AC(); }catch(e){ return; }
+  bgmGain=actx.createGain(); bgmGain.gain.value=0.5; bgmGain.connect(actx.destination);
+  const load=(uri,set)=>fetch(uri).then(r=>r.arrayBuffer())
+    .then(a=>new Promise((res,rej)=>actx.decodeAudioData(a,res,rej)))
+    .then(b=>{ set(b); tryStartBgm(); }).catch(()=>{});
+  load(BGM_URI,b=>{ bgmBuf=b; computeLoopPoints(b); }); load(SE1_URI,b=>se1Buf=b); load(SE2_URI,b=>se2Buf=b);
+}
+// MP3のエンコーダ余白（先頭/末尾の無音）を検出し、ループ点をそこに寄せて隙間をなくす
+function computeLoopPoints(buf){
+  let s=0, e=buf.length||0;
+  try{
+    const ch=buf.getChannelData(0), thr=0.004, N=buf.length;
+    for(let i=0;i<N;i++){ if(Math.abs(ch[i])>thr){ s=i; break; } }
+    for(let i=N-1;i>=0;i--){ if(Math.abs(ch[i])>thr){ e=i+1; break; } }
+    if(e<=s){ s=0; e=N; }
+    bgmLoopStart=s/buf.sampleRate; bgmLoopEnd=e/buf.sampleRate;
+  }catch(err){ bgmLoopStart=0; bgmLoopEnd=buf.duration||0; }
+}
+function tryStartBgm(){   // 条件が揃ったらBGMを隙間なしループで開始（多重開始しない）
+  if(!bgmWanted||!actx||!bgmBuf||bgmSrc||actx.state!=='running') return;
+  bgmSrc=actx.createBufferSource(); bgmSrc.buffer=bgmBuf; bgmSrc.loop=true;
+  if(bgmLoopEnd>bgmLoopStart){ bgmSrc.loopStart=bgmLoopStart; bgmSrc.loopEnd=bgmLoopEnd; }
+  bgmSrc.connect(bgmGain); bgmSrc.start(0, bgmLoopStart||0);
+}
+function stopBgmSrc(){ if(bgmSrc){ try{bgmSrc.stop();}catch(e){} try{bgmSrc.disconnect();}catch(e){} bgmSrc=null; } }
+function bgmPlay(){ bgmWanted=true; if(actx&&actx.state==='suspended') actx.resume().then(tryStartBgm); else tryStartBgm(); }
+function bgmStop(){ bgmWanted=false; stopBgmSrc(); }
+function playSe(buf,onend){   // 単発SE。onendで次のSEへ確実に連結できる
+  if(!actx||!buf) return;
+  if(actx.state==='suspended') actx.resume();
+  const s=actx.createBufferSource(); s.buffer=buf; s.connect(actx.destination);
+  if(onend) s.onended=onend; s.start(0);
+}
+// 最初のユーザー操作でオーディオを解錠（iOS / アプリ内WebView 対策）
+function unlockAudio(){ initAudio(); if(actx&&actx.state==='suspended') actx.resume().then(tryStartBgm); }
+window.addEventListener('pointerdown', unlockAudio, {passive:true});
+window.addEventListener('keydown', unlockAudio);
+window.addEventListener('touchend', unlockAudio, {passive:true});
+initAudio();   // ロード時にデコード開始（再生はユーザー操作で resume 後）
 
 // ==== 力士（極稀・当たるとゲームオーバー）関連アセット ====
 const rikishiImg=mkImg('__RIKISHI__');    // お邪魔：力士
 const soushikiImg=mkImg('__SOUSHIKI__');  // ゲームオーバー画像
-const se1=new Audio('__SE1__');           // 力士に当たった時のSE
-const se2=new Audio('__SE2__');           // ゲームオーバー画面のSE
-function playSe(a){ try{ a.currentTime=0; }catch(e){} const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }
-// 力士に接触 → 全停止＋爆発＋BGM停止＋SE1
-function triggerRikishi(cx,cy){ state='rikishi'; tState=0; exX=cx; exY=cy; bgmStop(); playSe(se1); }
-// SE1が鳴り終わったら → 葬式画面へ切替＋SE2
-function enterGameover(){ if(state==='gameover') return; state='gameover'; tState=0; playSe(se2); }
-se1.addEventListener('ended', enterGameover);
+// 力士に接触 → 全停止＋爆発＋BGM停止＋SE1、SE1終了で葬式画面＋SE2
+function triggerRikishi(cx,cy){
+  state='rikishi'; tState=0; exX=cx; exY=cy; se2Done=false;
+  bgmStop();
+  playSe(se1Buf, ()=>{ if(state==='rikishi') enterGameover(); });
+}
+function enterGameover(){
+  if(state==='gameover') return;
+  state='gameover'; tState=0;
+  playSe(se2Buf, ()=>{ se2Done=true; });
+}
 
 const W=256,H=240;
 const RACE_LEN=300, FULL=1.5, WEAK=0.35;
@@ -157,6 +196,7 @@ function reset(){
   boostTimer=0; stunTimer=0; freezeTimer=0;
   items=[]; itemTimer=0;
   obstacles=[]; spawnTimer=0;
+  se2Done=false;
   rollAiSpeed();
 }
 // 敵の速さを最遅〜最速の間で抽選し直す
@@ -164,7 +204,7 @@ function rollAiSpeed(){ aiSpeed=AI_SPEED_MIN+Math.pow(Math.random(),AI_SPEED_BIA
 reset();
 
 function press(side){
-  if(state==='gameover'){ if(se2.ended||tState>5){ reset(); state='countdown'; tState=0; } return; }
+  if(state==='gameover'){ if(se2Done||tState>5){ reset(); state='countdown'; tState=0; } return; }
   if(state==='rikishi') return;   // 爆発〜SE1中は操作不可
   if(state==='result'){ if(tState>1.2){ reset(); state='countdown'; tState=0; } return; }
   if(state==='race' && stunTimer<=0){
@@ -200,7 +240,7 @@ function spawnHazard(){
 function update(dt){
   tState+=dt; blink+=dt;
   if(state==='countdown'){ if(tState>3.4){ state='race'; tState=0; bgmPlay(); } return; }
-  if(state==='rikishi'){ if(se1.ended || tState>6) enterGameover(); return; } // SE1終了で葬式画面へ
+  if(state==='rikishi'){ if(tState>((se1Buf?se1Buf.duration:2.2)+0.4)) enterGameover(); return; } // SE1終了で葬式画面へ（onendが主・時間はフォールバック）
   if(state!=='race') return;   // result / gameover は動かさない
 
   // 敵（時計で止まっている間は進まない）。速さは約3秒ごとにランダム更新
@@ -333,7 +373,7 @@ function drawGameover(){
   ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
   if(soushikiImg.complete && soushikiImg.naturalWidth) ctx.drawImage(soushikiImg,0,48,256,144);
   else txt('GAME OVER',128,110,20,'#fff','center');
-  if((se2.ended||tState>5) && blink%1<0.5) txt('A/B か Z/X で さいしょから',128,214,11,'#fff','center');
+  if((se2Done||tState>5) && blink%1<0.5) txt('A/B か Z/X で さいしょから',128,214,11,'#fff','center');
 }
 
 function draw(){
