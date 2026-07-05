@@ -5,7 +5,7 @@
 
 **▶ Play: https://hotatecurry.github.io/sanma-boat-race/**
 
-![screenshot](og.png)
+![screenshot](ogcard.png)
 
 ## 遊び方
 - **漕ぐ**: `A` / `B` を交互連打（PCキー: `Z`=B, `X`=A）。交互に押すほど加速。

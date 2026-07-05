@@ -39,21 +39,18 @@ HTML = r'''<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ボートレース — さんま VS やすし</title>
-<meta name="description" content="A/B交互連打で やすしに勝て！ ファミコン風ボートレース・ミニゲーム。タコ焼きでスピードアップ、力士に当たると…！？">
 <link rel="icon" type="image/png" href="__FAVICON__">
-<!-- OGP / Twitter Card -->
+<!-- OGP / Twitter Card（画像＋タイトルのみ・説明文なし） -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ボートレース">
 <meta property="og:title" content="ボートレース — さんま VS やすし">
-<meta property="og:description" content="A/B交互連打で やすしに勝て！ ファミコン風ボートレース・ミニゲーム。タコ焼きでスピードアップ、力士に当たると…！？">
 <meta property="og:url" content="__SITE_URL__">
-<meta property="og:image" content="__SITE_URL__og.png?v=2">
+<meta property="og:image" content="__SITE_URL__ogcard.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ボートレース — さんま VS やすし">
-<meta name="twitter:description" content="A/B交互連打で やすしに勝て！ ファミコン風ボートレース・ミニゲーム。">
-<meta name="twitter:image" content="__SITE_URL__og.png?v=2">
+<meta name="twitter:image" content="__SITE_URL__ogcard.png">
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; background:#000; touch-action:none; overscroll-behavior:none; }

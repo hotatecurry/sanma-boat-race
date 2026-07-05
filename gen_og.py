@@ -58,6 +58,5 @@ text_sh(tx,218,'ボートレース',font(80),(255,255,255))
 text_sh(tx,330,'さんま VS やすし',font(52),(255,210,63))
 draw.rectangle([tx+4,406,tx+300,411],fill=(46,124,200))   # 装飾アクセント
 
-card.save(P('og.png'),'PNG')
-# プレビュー(縮小)も出す
-print('og.png', card.size, os.path.getsize(P('og.png')),'B')
+card.save(P('ogcard.png'),'PNG')
+print('ogcard.png', card.size, os.path.getsize(P('ogcard.png')),'B')
